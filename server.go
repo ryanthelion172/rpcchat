@@ -1,5 +1,9 @@
 package main
 
+import (
+
+)
+
 const (
         MsgRegister = iota
         MsgList
@@ -112,6 +116,9 @@ func Shutdown() {
         shutdown <- struct{}{}
 }
 
+func client(serverAddress string, username string) {
+
+}
 
 func main() {
     log.SetFlags(log.Ltime)
