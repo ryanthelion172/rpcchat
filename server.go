@@ -1,4 +1,5 @@
 package main
+
 const (
         MsgRegister = iota
         MsgList
