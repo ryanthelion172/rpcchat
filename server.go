@@ -1,6 +1,10 @@
 package main
 
 import (
+	"bufio"
+	"log"
+	"os"
+	"strings"
 
 )
 
@@ -100,6 +104,14 @@ func Say(user, message string) {
         }
 }
 
+func Help() {
+	log.Print("tell <user> message: messages user directly\n
+	say: says message to all users\n
+	list: Shows list of users\n
+	quit: Quits proram\n
+	shutdown: Shutdown server\n")
+}
+
 func Quit(user string) {
         mutex.Lock()
         defer mutex.Unlock()
@@ -117,9 +129,39 @@ func Shutdown() {
 }
 
 func client(serverAddress string, username string) {
+	quit := false
+	//connect to server
+	Register(username)
+	// read inputs 
+	for quit == false {
+		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Scan()
+	        err := scanner.Err()
+		if err != nil {
+			log.Fatal(err)
+		}
+		switch scanner {
+		case "list":
+			log.Print(list())
+		case "tell":
 
+		case "say":
+
+		case "quit":
+			quit = true
+			Quit(username)
+		case "shutdown":
+			quit = true
+			Shutdown()
+		case "help":
+			Help()
+		case "":
+		default:
+			log.Print("Error: Unrecognized command")
+			Help()
+		}
+	}
 }
-
 func main() {
     log.SetFlags(log.Ltime)
 
