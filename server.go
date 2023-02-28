@@ -242,7 +242,7 @@ func client(serverAddress string, username string) {
 		}
 		switch scanner.Text() {
 		case "list":
-			log.Print(list())
+			log.Print(List())
 		case "tell":
 
 		case "say":
