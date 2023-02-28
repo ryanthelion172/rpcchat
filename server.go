@@ -2,10 +2,12 @@ package main
 
 import (
 	"bufio"
-	"log"
 	"os"
 	"strings"
-
+	"flag"
+	"fmt"
+	"log"
+	"net"
 )
 
 const (
@@ -24,8 +26,20 @@ var shutdown chan struct{}
 
 func server(listenAddress string) {
         shutdown = make(chan struct{})
-        messages = make(map[string][]string)
-
+        messages = make(map[string][]string
+)
+	ln, err := net.Listen("tcp", listenAddress)
+	if err != nil {
+		log.Panicf("Can't bind port to listen. %q", err)
+	}
+	defer ln.close()
+	for {
+	    conn, err := ln.Accept()
+		if err != nil {
+		log.Panicln(err)
+	    }
+	go handleConnection(conn)
+	}
         // set up network listen and accept loop here
         // to receive and dispatch RPC requests
         // ...
