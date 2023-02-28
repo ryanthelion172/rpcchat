@@ -154,7 +154,7 @@ func client(serverAddress string, username string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		switch scanner {
+		switch scanner.Text() {
 		case "list":
 			log.Print(list())
 		case "tell":
