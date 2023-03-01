@@ -44,24 +44,20 @@ func server(listenAddress string) {
 
 	// accept incoming connections and handle RPC requests
 	for {
-		select {
-		case <-shutdown:
-			return
-		default:
-			conn, err := listener.Accept()
-			if err != nil {
-				log.Println("Failed to accept connection: ", err)
-				continue
-			}
-			go handleConnection(conn)
+
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Println("Failed to accept connection: ", err)
+			continue
 		}
+		go handleConnection(conn)
+
 	}
 	// set up network listen and accept loop here
 	// to receive and dispatch RPC requests
 	// ...
 
 	// wait for a shutdown request
-	time.Sleep(100 * time.Millisecond)
 }
 
 func handleConnection(conn net.Conn) {
@@ -137,6 +133,8 @@ func handleConnection(conn net.Conn) {
 	default:
 		log.Printf("unknown message type: %d", msgType)
 	}
+	<-shutdown
+	time.Sleep(100 * time.Millisecond)
 }
 
 func Register(user string) error {
