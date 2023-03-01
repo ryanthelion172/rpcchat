@@ -232,9 +232,9 @@ func Shutdown() {
 	shutdown <- struct{}{}
 }
 
-func waitAndCheck(server, user string, stop *programQuit) {
+func waitAndCheck(server, user string, stop *programQuit) error {
 	conn, err := net.Dial("tcp", server)
-	defer conn.close()
+	defer conn.Close()
 	if err != nil {
 		return err
 	}
@@ -246,11 +246,12 @@ func waitAndCheck(server, user string, stop *programQuit) {
 		log.Print(messages)
 		time.Sleep(1000)
 	}
+	return nil
 }
 
 func RegisterRPC(server, user string) error {
 	conn, err := net.Dial("tcp", server)
-	defer conn.close()
+	defer conn.Close()
 	if err != nil {
 		return err
 	}
@@ -260,25 +261,25 @@ func RegisterRPC(server, user string) error {
 
 func ListRPC(server string) ([]string, error) {
 	conn, err := net.Dial("tcp", server)
-	defer conn.close()
+	defer conn.Close()
 	if err != nil {
-		return _, err
+		return make([]string, 0), err
 	}
 	return List(), nil
 }
 
 func CheckMessagesRPC(server, user string) ([]string, error) {
 	conn, err := net.Dial("tcp", server)
-	defer conn.close()
+	defer conn.Close()
 	if err != nil {
-		return _, err
+		return make([]string, 0), err
 	}
 	return CheckMessages(user), nil
 }
 
 func TellRPC(server, user, target, message string) error {
 	conn, err := net.Dial("tcp", server)
-	defer conn.close()
+	defer conn.Close()
 	if err != nil {
 		return err
 	}
@@ -288,7 +289,7 @@ func TellRPC(server, user, target, message string) error {
 
 func SayRPC(server, user, message string) error {
 	conn, err := net.Dial("tcp", server)
-	defer conn.close()
+	defer conn.Close()
 	if err != nil {
 		return err
 	}
@@ -298,7 +299,7 @@ func SayRPC(server, user, message string) error {
 
 func QuitRPC(server, user string) error {
 	conn, err := net.Dial("tcp", server)
-	defer conn.close()
+	defer conn.Close()
 	if err != nil {
 		return err
 	}
@@ -308,7 +309,7 @@ func QuitRPC(server, user string) error {
 
 func ShutdownRPC(server string) error {
 	conn, err := net.Dial("tcp", server)
-	defer conn.close()
+	defer conn.Close()
 	if err != nil {
 		return err
 	}
