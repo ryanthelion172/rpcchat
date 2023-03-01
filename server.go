@@ -24,6 +24,10 @@ const (
 	MsgShutdown
 )
 
+type programQuit struct {
+	Quit bool
+}
+
 var mutex sync.Mutex
 var messages map[string][]string
 var shutdown chan struct{}
@@ -203,11 +207,11 @@ func Say(user, message string) {
 }
 
 func Help() {
-	log.Print("tell <user> message: messages user directly" +
-		"say: says message to all users" +
-		"list: Shows list of users" +
-		"quit: Quits proram" +
-		"shutdown: Shutdown server")
+	log.Print("tell <user> message: messages user directly\n" +
+		"say: says message to all users\n" +
+		"list: Shows list of users\n" +
+		"quit: Quits proram\n" +
+		"shutdown: Shutdown server\n")
 }
 
 func Quit(user string) {
@@ -226,31 +230,156 @@ func Shutdown() {
 	shutdown <- struct{}{}
 }
 
-func client(serverAddress string, username string) {
-	quit := false
+func waitAndCheck(server, user string, stop *programQuit) {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
+	for stop.Quit == false {
+		messages, err := CheckMessagesRPC(server, user)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Print(messages)
+		time.Sleep(1000)
+	}
+}
+
+func RegisterRPC(server, user string) error {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
+	Register(user)
+	return nil
+}
+
+func ListRPC(server string) ([]string, error) {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return _, err
+	}
+	return List(), nil
+}
+
+func CheckMessagesRPC(server, user string) ([]string, error) {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return _, err
+	}
+	return CheckMessages(user), nil
+}
+
+func TellRPC(server, user, target, message string) error {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
+	Tell(user, target, message)
+	return nil
+}
+
+func SayRPC(server, user, message string) error {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
+	Say(user, message)
+	return nil
+}
+
+func QuitRPC(server, user string) error {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
+	Quit(user)
+	return nil
+}
+
+func ShutdownRPC(server string) error {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
+	Shutdown()
+	return nil
+}
+
+func client(serverAddress, user string) {
+	stop := programQuit{Quit: false}
 	//connect to server
-	Register(username)
+	err := RegisterRPC(serverAddress, user)
+	if err != nil {
+		log.Fatal(err)
+	}
+	go waitAndCheck(serverAddress, user, &stop)
 	// read inputs
-	for quit == false {
+	for stop.Quit == false {
 		scanner := bufio.NewScanner(os.Stdin)
 		scanner.Scan()
 		err := scanner.Err()
 		if err != nil {
 			log.Fatal(err)
 		}
-		switch scanner.Text() {
+		s := strings.Split(scanner.Text(), " ")
+		switch s[0] {
 		case "list":
-			log.Print(List())
+			commands, err := ListRPC(serverAddress)
+			if err != nil {
+				log.Fatal("Command could not be sent, Quitting program.")
+			}
+			log.Print(commands)
 		case "tell":
-
+			//recreate tell message
+			originalMessage := ""
+			for i, word := range s {
+				if i >= 2 {
+					originalMessage += word
+					if i != len(s) - 1 {
+						originalMessage += " "
+					}
+				}
+			}
+			err := TellRPC(serverAddress, user, s[1], originalMessage)
+			if err != nil {
+				log.Fatal("Command could not be sent, Quitting program.")
+			}
 		case "say":
-
+			//recreate say message
+			originalMessage := ""
+			for i, word := range s {
+				if i >= 1 {
+					originalMessage += word
+					if i != len(s) - 1 {
+						originalMessage += " "
+					}
+				}
+			}
+			err := SayRPC(serverAddress, user, originalMessage)
+			if err != nil {
+				log.Fatal("Command could not be sent, Quitting program.")
+			}
 		case "quit":
-			quit = true
-			Quit(username)
+			stop.Quit = true
+			err := QuitRPC(serverAddress, user)
+			if err != nil {
+				log.Fatal("Command could not be sent, Quitting program.")
+			}
 		case "shutdown":
-			quit = true
-			Shutdown()
+			stop.Quit = true
+			err := ShutdownRPC(serverAddress)
+			if err != nil {
+				log.Fatal("Command could not be sent, Quitting program.")
+			}
 		case "help":
 			Help()
 		case "":
@@ -260,6 +389,7 @@ func client(serverAddress string, username string) {
 		}
 	}
 }
+
 func main() {
 	log.SetFlags(log.Ltime)
 
