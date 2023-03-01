@@ -24,6 +24,10 @@ const (
 	MsgShutdown
 )
 
+type programQuit struct {
+	Quit bool
+}
+
 var mutex sync.Mutex
 var messages map[string][]string
 var shutdown chan struct{}
@@ -228,30 +232,59 @@ func Shutdown() {
 	shutdown <- struct{}{}
 }
 
-func client(serverAddress string, username string) {
-	quit := false
+func waitAndCheck(user string, stop programQuit) {
+	for stop.Quit == false {
+		log.Print(CheckMessages(user))
+		time.Sleep(1000)
+	}
+}
+
+func client(serverAddress, user string) {
+	stop := programQuit{Quit: false}
 	//connect to server
-	Register(username)
+	Register(user)
+	go waitAndCheck(user, stop)
 	// read inputs
-	for quit == false {
+	for stop.Quit == false {
 		scanner := bufio.NewScanner(os.Stdin)
 		scanner.Scan()
 		err := scanner.Err()
 		if err != nil {
 			log.Fatal(err)
 		}
-		switch scanner.Text() {
+		s := strings.Split(scanner.Text(), " ")
+		switch s[0] {
 		case "list":
 			log.Print(List())
 		case "tell":
-
+			//recreate tell message
+			originalMessage := ""
+			for i, word := range s {
+				if i >= 2 {
+					originalMessage += word
+					if i != len(s) - 1 {
+						originalMessage += " "
+					}
+				}
+			}
+			Tell(user, s[1], originalMessage)
 		case "say":
-
+			//recreate say message
+			originalMessage := ""
+			for i, word := range s {
+				if i >= 1 {
+					originalMessage += word
+					if i != len(s) - 1 {
+						originalMessage += " "
+					}
+				}
+			}
+			Say(user, originalMessage)
 		case "quit":
-			quit = true
-			Quit(username)
+			stop.Quit = true
+			Quit(user)
 		case "shutdown":
-			quit = true
+			stop.Quit = true
 			Shutdown()
 		case "help":
 			Help()
