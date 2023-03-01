@@ -209,11 +209,11 @@ func Say(user, message string) {
 }
 
 func Help() {
-	log.Print("tell <user> message: messages user directly" +
-		"say: says message to all users" +
-		"list: Shows list of users" +
-		"quit: Quits proram" +
-		"shutdown: Shutdown server")
+	log.Print("tell <user> message: messages user directly\n" +
+		"say: says message to all users\n" +
+		"list: Shows list of users\n" +
+		"quit: Quits proram\n" +
+		"shutdown: Shutdown server\n")
 }
 
 func Quit(user string) {
@@ -232,11 +232,16 @@ func Shutdown() {
 	shutdown <- struct{}{}
 }
 
-func waitAndCheck(server, user string, stop programQuit) {
+func waitAndCheck(server, user string, stop *programQuit) {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
 	for stop.Quit == false {
 		messages, err := CheckMessagesRPC(server, user)
 		if err != nil {
-			log.Fatal("Command could not be sent, Quiting program.")
+			log.Fatal(err)
 		}
 		log.Print(messages)
 		time.Sleep(1000)
@@ -244,34 +249,69 @@ func waitAndCheck(server, user string, stop programQuit) {
 }
 
 func RegisterRPC(server, user string) error {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
 	Register(user)
 	return nil
 }
 
 func ListRPC(server string) ([]string, error) {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return _, err
+	}
 	return List(), nil
 }
 
 func CheckMessagesRPC(server, user string) ([]string, error) {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return _, err
+	}
 	return CheckMessages(user), nil
 }
 
 func TellRPC(server, user, target, message string) error {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
 	Tell(user, target, message)
 	return nil
 }
 
 func SayRPC(server, user, message string) error {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
 	Say(user, message)
 	return nil
 }
 
 func QuitRPC(server, user string) error {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
 	Quit(user)
 	return nil
 }
 
 func ShutdownRPC(server string) error {
+	conn, err := net.Dial("tcp", server)
+	defer conn.close()
+	if err != nil {
+		return err
+	}
 	Shutdown()
 	return nil
 }
@@ -283,7 +323,7 @@ func client(serverAddress, user string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go waitAndCheck(serverAddress, user, stop)
+	go waitAndCheck(serverAddress, user, &stop)
 	// read inputs
 	for stop.Quit == false {
 		scanner := bufio.NewScanner(os.Stdin)
@@ -297,7 +337,7 @@ func client(serverAddress, user string) {
 		case "list":
 			commands, err := ListRPC(serverAddress)
 			if err != nil {
-				log.Fatal("Command could not be sent, Quiting program.")
+				log.Fatal("Command could not be sent, Quitting program.")
 			}
 			log.Print(commands)
 		case "tell":
@@ -313,7 +353,7 @@ func client(serverAddress, user string) {
 			}
 			err := TellRPC(serverAddress, user, s[1], originalMessage)
 			if err != nil {
-				log.Fatal("Command could not be sent, Quiting program.")
+				log.Fatal("Command could not be sent, Quitting program.")
 			}
 		case "say":
 			//recreate say message
@@ -328,19 +368,19 @@ func client(serverAddress, user string) {
 			}
 			err := SayRPC(serverAddress, user, originalMessage)
 			if err != nil {
-				log.Fatal("Command could not be sent, Quiting program.")
+				log.Fatal("Command could not be sent, Quitting program.")
 			}
 		case "quit":
 			stop.Quit = true
 			err := QuitRPC(serverAddress, user)
 			if err != nil {
-				log.Fatal("Command could not be sent, Quiting program.")
+				log.Fatal("Command could not be sent, Quitting program.")
 			}
 		case "shutdown":
 			stop.Quit = true
 			err := ShutdownRPC(serverAddress)
 			if err != nil {
-				log.Fatal("Command could not be sent, Quiting program.")
+				log.Fatal("Command could not be sent, Quitting program.")
 			}
 		case "help":
 			Help()
