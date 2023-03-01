@@ -232,18 +232,58 @@ func Shutdown() {
 	shutdown <- struct{}{}
 }
 
-func waitAndCheck(user string, stop programQuit) {
+func waitAndCheck(server, user string, stop programQuit) {
 	for stop.Quit == false {
-		log.Print(CheckMessages(user))
+		messages, err := CheckMessagesRPC(server, user)
+		if err != nil {
+			log.Fatal("Command could not be sent, Quiting program.")
+		}
+		log.Print(messages)
 		time.Sleep(1000)
 	}
+}
+
+func RegisterRPC(server, user string) error {
+	Register(user)
+	return nil
+}
+
+func ListRPC(server string) ([]string, error) {
+	return List(), nil
+}
+
+func CheckMessagesRPC(server, user string) ([]string, error) {
+	return CheckMessages(user), nil
+}
+
+func TellRPC(server, user, target, message string) error {
+	Tell(user, target, message)
+	return nil
+}
+
+func SayRPC(server, user, message string) error {
+	Say(user, message)
+	return nil
+}
+
+func QuitRPC(server, user string) error {
+	Quit(user)
+	return nil
+}
+
+func ShutdownRPC(server string) error {
+	Shutdown()
+	return nil
 }
 
 func client(serverAddress, user string) {
 	stop := programQuit{Quit: false}
 	//connect to server
-	Register(user)
-	go waitAndCheck(user, stop)
+	err := RegisterRPC(serverAddress, user)
+	if err != nil {
+		log.Fatal(err)
+	}
+	go waitAndCheck(serverAddress, user, stop)
 	// read inputs
 	for stop.Quit == false {
 		scanner := bufio.NewScanner(os.Stdin)
@@ -255,7 +295,11 @@ func client(serverAddress, user string) {
 		s := strings.Split(scanner.Text(), " ")
 		switch s[0] {
 		case "list":
-			log.Print(List())
+			commands, err := ListRPC(serverAddress)
+			if err != nil {
+				log.Fatal("Command could not be sent, Quiting program.")
+			}
+			log.Print(commands)
 		case "tell":
 			//recreate tell message
 			originalMessage := ""
@@ -267,7 +311,10 @@ func client(serverAddress, user string) {
 					}
 				}
 			}
-			Tell(user, s[1], originalMessage)
+			err := TellRPC(serverAddress, user, s[1], originalMessage)
+			if err != nil {
+				log.Fatal("Command could not be sent, Quiting program.")
+			}
 		case "say":
 			//recreate say message
 			originalMessage := ""
@@ -279,13 +326,22 @@ func client(serverAddress, user string) {
 					}
 				}
 			}
-			Say(user, originalMessage)
+			err := SayRPC(serverAddress, user, originalMessage)
+			if err != nil {
+				log.Fatal("Command could not be sent, Quiting program.")
+			}
 		case "quit":
 			stop.Quit = true
-			Quit(user)
+			err := QuitRPC(serverAddress, user)
+			if err != nil {
+				log.Fatal("Command could not be sent, Quiting program.")
+			}
 		case "shutdown":
 			stop.Quit = true
-			Shutdown()
+			err := ShutdownRPC(serverAddress)
+			if err != nil {
+				log.Fatal("Command could not be sent, Quiting program.")
+			}
 		case "help":
 			Help()
 		case "":
@@ -295,6 +351,7 @@ func client(serverAddress, user string) {
 		}
 	}
 }
+
 func main() {
 	log.SetFlags(log.Ltime)
 
