@@ -62,83 +62,88 @@ func server(listenAddress string) {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
-	value, err := ReadUint16(conn)
-	fmt.Print(value)
+	msgType, err := ReadUint16(conn)
 	if err != nil {
 		log.Printf("error decoding message type: %v", err)
 		return
 	}
-	// fmt.Print(conn)
-	// var msgType int
-	// if err := (msgType); err != nil {
-	// 	log.Printf("error decoding message type: %v", err)
-	// 	return
-	// }
-	// switch msgType {
-	// case MsgRegister:
-	// 	var user string
-	// 	if err := (&user); err != nil {
-	// 		log.Printf("error decoding Register message: %v", err)
-	// 		return
-	// 	}
-	// 	if err := Register(user); err != nil {
-	// 		log.Printf("error handling Register message: %v", err)
-	// 	}
-	// case MsgList:
-	// 	users := List()
-	// 	enc := (conn)
-	// 	if err := enc.(users); err != nil {
-	// 		log.Printf("error encoding List response: %v", err)
-	// 	}
-	// case MsgCheckMessages:
-	// 	var user string
-	// 	if err := (&user); err != nil {
-	// 		log.Printf("error decoding CheckMessages message: %v", err)
-	// 		return
-	// 	}
-	// 	messages := CheckMessages(user)
-	// 	enc := (conn)
-	// 	if err := enc.(messages); err != nil {
-	// 		log.Printf("error encoding CheckMessages response: %v", err)
-	// 	}
-	// case MsgTell:
-	// 	var user, target, message string
-	// 	if err := (&user); err != nil {
-	// 		log.Printf("error decoding Tell message: %v", err)
-	// 		return
-	// 	}
-	// 	if err := (&target); err != nil {
-	// 		log.Printf("error decoding Tell message: %v", err)
-	// 		return
-	// 	}
-	// 	if err := (&message); err != nil {
-	// 		log.Printf("error decoding Tell message: %v", err)
-	// 		return
-	// 	}
-	// 	Tell(user, target, message)
-	// case MsgSay:
-	// 	var user, message string
-	// 	if err := (&user); err != nil {
-	// 		log.Printf("error decoding Say message: %v", err)
-	// 		return
-	// 	}
-	// 	if err := (&message); err != nil {
-	// 		log.Printf("error decoding Say message: %v", err)
-	// 		return
-	// 	}
-	// 	Say(user, message)
-	// case MsgQuit:
-	// 	var user string
-	// 	if err := (&user); err != nil {
-	// 		log.Printf("error decoding Quit message: %v", err)
-	// 		return
-	// 	}
-	// 	Quit(user)
-	// case MsgShutdown:
-	// 	Shutdown()
-	// default:
-	// 	log.Printf("unknown message type: %d", msgType)
-	// }
+	switch msgType {
+	case MsgRegister:
+		user, err := ReadString(conn)
+		if err != nil {
+			log.Printf("error decoding Register message: %v", err)
+			return
+		}
+		if err := Register(user); err != nil {
+			log.Printf("error handling Register message: %v", err)
+		}
+	case MsgList:
+		users := List()
+		err = WriteStringSlice(conn, users)
+		if err != nil {
+			log.Printf("error encoding List response: %v", err)
+		}
+		err = WriteString(conn, "")
+		if err != nil {
+			log.Printf("error encoding List response: %v", err)
+		}
+	case MsgCheckMessages:
+		user, err := ReadString(conn)
+		if err != nil {
+			log.Printf("error decoding CheckMessages message: %v", err)
+			return
+		}
+		messages := CheckMessages(user)
+		err = WriteStringSlice(conn, messages)
+		if err != nil {
+			log.Printf("error encoding CheckMessages response: %v", err)
+		}
+	case MsgTell:
+		user, err := ReadString(conn)
+		if err != nil {
+			log.Printf("error decoding Tell message: %v", err)
+			return
+		}
+		target, err := ReadString(conn)
+		if err != nil {
+			log.Printf("error decoding Tell message: %v", err)
+			return
+		}
+		message, err := ReadString(conn)
+		if err != nil {
+			log.Printf("error decoding Tell message: %v", err)
+			return
+		}
+		err = WriteString(conn, "")
+		if err != nil {
+			log.Printf("error encoding List response: %v", err)
+		}
+		Tell(user, target, message)
+	case MsgSay:
+
+		user, err := ReadString(conn)
+		if err != nil {
+			log.Printf("error decoding Say message: %v", err)
+			return
+		}
+		message, err := ReadString(conn)
+		if err != nil {
+			log.Printf("error decoding Say message: %v", err)
+			return
+		}
+		Say(user, message)
+	case MsgQuit:
+		user, err := ReadString(conn)
+		if err != nil {
+			log.Printf("error decoding Quit message: %v", err)
+			return
+		}
+		Quit(user)
+	case MsgShutdown:
+		Shutdown()
+	default:
+		log.Printf("unknown message type: %d", msgType)
+	}
 	<-shutdown
 	time.Sleep(100 * time.Millisecond)
 }
@@ -458,7 +463,7 @@ func ReadUint16(r io.Reader) (uint16, error) {
 	if err != nil {
 		return 0, err
 	}
-	fmt.Print("buf:", buf)
+
 	value := uint16(buf[0])<<8 | uint16(buf[1])
 	return value, nil
 }
@@ -481,4 +486,31 @@ func WriteStringSlice(conn io.Writer, value []string) error{
 		WriteString(conn, x)
 	}
 	return nil
+}
+func ReadString(r io.Reader) (string, error) {
+	strLen, err := ReadUint16(r)
+	if err != nil {
+		return "", err
+	}
+	strBuf := make([]byte, strLen)
+	_, err = io.ReadFull(r, strBuf)
+	if err != nil {
+		return "", err
+	}
+	return string(strBuf), nil
+}
+func ReadStringSlice(r io.Reader) ([]string, error) {
+	strsLen, err := ReadUint16(r)
+	if err != nil {
+		return nil, err
+	}
+	strs := make([]string, strsLen)
+	for i := uint16(0); i < strsLen; i++ {
+		str, err := ReadString(r)
+		if err != nil {
+			return nil, err
+		}
+		strs[i] = str
+	}
+	return strs, nil
 }
