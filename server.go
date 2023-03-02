@@ -207,8 +207,8 @@ func Say(user, message string) {
 }
 
 func Help() {
-	log.Print("tell <user> message: messages user directly\n" +
-		"say: says message to all users\n" +
+	log.Print("tell <user> <message>: messages user directly\n" +
+		"say <message>: says message to all users\n" +
 		"list: Shows list of users\n" +
 		"quit: Quits proram\n" +
 		"shutdown: Shutdown server\n")
@@ -230,12 +230,12 @@ func Shutdown() {
 	shutdown <- struct{}{}
 }
 
-func waitAndCheck(server, user string, stop *programQuit) error {
+func waitAndCheck(server, user string, stop *programQuit) {
 	conn, err := net.Dial("tcp", server)
-	defer conn.Close()
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
+	defer conn.Close()
 	for stop.Quit == false {
 		messages, err := CheckMessagesRPC(server, user)
 		if err != nil {
@@ -244,73 +244,96 @@ func waitAndCheck(server, user string, stop *programQuit) error {
 		log.Print(messages)
 		time.Sleep(1000)
 	}
-	return nil
 }
 
 func RegisterRPC(server, user string) error {
 	conn, err := net.Dial("tcp", server)
-	defer conn.Close()
 	if err != nil {
 		return err
 	}
-	Register(user)
+	defer conn.Close()
+	// Call register on server using WriteUint16.
+	//WriteUint16(conn, MsgRegister)
+	// Give server parameter of user using WriteString.
+	//WriteString(conn, user)
+	// receive error using ReadString.
+	//err = ReadString(conn)
 	return nil
 }
 
 func ListRPC(server string) ([]string, error) {
 	conn, err := net.Dial("tcp", server)
-	defer conn.Close()
 	if err != nil {
 		return make([]string, 0), err
 	}
+	defer conn.Close()
+	// Call List on server using WriteUint16.
+	// receive returned list using ReadStringSlice.
+	// receive error using ReadString.
 	return List(), nil
 }
 
 func CheckMessagesRPC(server, user string) ([]string, error) {
 	conn, err := net.Dial("tcp", server)
-	defer conn.Close()
 	if err != nil {
 		return make([]string, 0), err
 	}
+	defer conn.Close()
+	// Call Check messages on server using WriteUint16.
+	// Give server parameter of user using WriteString.
+	// receive returned list using ReadStringSlice.
+	// receive error using ReadString.
 	return CheckMessages(user), nil
 }
 
 func TellRPC(server, user, target, message string) error {
 	conn, err := net.Dial("tcp", server)
-	defer conn.Close()
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
+	// Call Tell on server using WriteUint16.
+	// Give server parameter of user, target, and message using WriteString.
+	// receive error using ReadString.
 	Tell(user, target, message)
 	return nil
 }
 
 func SayRPC(server, user, message string) error {
 	conn, err := net.Dial("tcp", server)
-	defer conn.Close()
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
+	// Call Say on server using WriteUint16.
+	// Give server parameter of user and message using WriteString.
+	// receive error using ReadString.
 	Say(user, message)
 	return nil
 }
 
 func QuitRPC(server, user string) error {
 	conn, err := net.Dial("tcp", server)
-	defer conn.Close()
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
+	// Call Quit on server using WriteUint16.
+	// Give server parameter of user using WriteString.
+	// receive error using ReadString.
 	Quit(user)
 	return nil
 }
 
 func ShutdownRPC(server string) error {
 	conn, err := net.Dial("tcp", server)
-	defer conn.Close()
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
+	// Call Shutdown on server using WriteUint16.
+	// Give server parameter of user using WriteString.
+	// receive error using ReadString.
 	Shutdown()
 	return nil
 }
