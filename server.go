@@ -259,9 +259,9 @@ func RegisterRPC(server, user string) error {
 	}
 	defer conn.Close()
 	// Call register on server using WriteUint16.
-	//WriteUint16(conn, MsgRegister)
+	WriteUint16(conn, MsgRegister)
 	// Give server parameter of user using WriteString.
-	//WriteString(conn, user)
+	WriteString(conn, user)
 	// receive error using ReadString.
 	//err = ReadString(conn)
 	return nil
@@ -274,9 +274,10 @@ func ListRPC(server string) ([]string, error) {
 	}
 	defer conn.Close()
 	// Call List on server using WriteUint16.
+	WriteUint16(conn, MsgList)
 	// receive returned list using ReadStringSlice.
 	// receive error using ReadString.
-	return List(), nil
+	return make([]string), nil
 }
 
 func CheckMessagesRPC(server, user string) ([]string, error) {
@@ -286,10 +287,11 @@ func CheckMessagesRPC(server, user string) ([]string, error) {
 	}
 	defer conn.Close()
 	// Call Check messages on server using WriteUint16.
+	WriteUint16(conn, MsgCheckMessages)
 	// Give server parameter of user using WriteString.
 	// receive returned list using ReadStringSlice.
 	// receive error using ReadString.
-	return CheckMessages(user), nil
+	return make([]string 0), nil
 }
 
 func TellRPC(server, user, target, message string) error {
@@ -299,9 +301,9 @@ func TellRPC(server, user, target, message string) error {
 	}
 	defer conn.Close()
 	// Call Tell on server using WriteUint16.
+	WriteUint16(conn, MsgTell)
 	// Give server parameter of user, target, and message using WriteString.
 	// receive error using ReadString.
-	Tell(user, target, message)
 	return nil
 }
 
@@ -312,9 +314,9 @@ func SayRPC(server, user, message string) error {
 	}
 	defer conn.Close()
 	// Call Say on server using WriteUint16.
+	WriteUint16(conn, MsgSay)
 	// Give server parameter of user and message using WriteString.
 	// receive error using ReadString.
-	Say(user, message)
 	return nil
 }
 
@@ -325,9 +327,9 @@ func QuitRPC(server, user string) error {
 	}
 	defer conn.Close()
 	// Call Quit on server using WriteUint16.
+	WriteUint16(conn, MsgQuit)
 	// Give server parameter of user using WriteString.
 	// receive error using ReadString.
-	Quit(user)
 	return nil
 }
 
@@ -340,7 +342,6 @@ func ShutdownRPC(server string) error {
 	// Call Shutdown on server using WriteUint16.
 	// Give server parameter of user using WriteString.
 	// receive error using ReadString.
-	Shutdown()
 	return nil
 }
 
@@ -351,7 +352,7 @@ func client(serverAddress, user string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go waitAndCheck(serverAddress, user, &stop)
+	//go waitAndCheck(serverAddress, user, &stop)
 	// read inputs
 	for stop.Quit == false {
 		scanner := bufio.NewScanner(os.Stdin)
@@ -450,6 +451,7 @@ func main() {
 		client(serverAddress, username)
 	}
 }
+
 func ReadUint16(r io.Reader) (uint16, error) {
 	buf := make([]byte, 2)
 	_, err := io.ReadFull(r, buf)
@@ -461,9 +463,22 @@ func ReadUint16(r io.Reader) (uint16, error) {
 	return value, nil
 }
 func WriteUint16(conn io.Writer, value uint16) error {
-	buf := make([]byte, 2)
-	buf[0] = byte(value >> 8)
-	buf[1] = byte(value)
-	_, err := conn.Write(buf)
+	raw := []byte {
+		byte((value >> 8) & 0xff),
+		byte((value >> 0) & 0xff),
+	}
+	_, err := conn.Write(raw)
 	return err
+}
+func WriteString(conn io.Writer, value string) error {
+	WriteUint16(conn, uint16(len(value)))
+	_, err := io.WriteString(conn, value)
+	return err
+}
+func WriteStringSlice(conn io.Writer, value []string) error{
+	WriteUint16(conn, uint16(len(value)))
+	for _, x := range value {
+		WriteString(conn, x)
+	}
+	return nil
 }
