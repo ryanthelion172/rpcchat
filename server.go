@@ -94,7 +94,9 @@ func handleConnection(conn net.Conn) {
 		if err != nil {
 			log.Printf("error encoding List response: %v", err)
 		}
+
 		WriteString(conn, "")
+
 	case MsgCheckMessages:
 		user, err := ReadString(conn)
 		if err != nil {
@@ -157,6 +159,7 @@ func handleConnection(conn net.Conn) {
 	default:
 		log.Printf("unknown message type: %d", msgType)
 	}
+
 	<-shutdown
 	time.Sleep(100 * time.Millisecond)
 }
