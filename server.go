@@ -43,7 +43,8 @@ func server(listenAddress string) {
 	defer listener.Close()
 
 	// accept incoming connections and handle RPC requestsfor {
-	for {
+	go func (){
+		for {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println("Failed to accept connection: ", err)
@@ -56,12 +57,14 @@ func server(listenAddress string) {
 	<-shutdown
 	time.Sleep(100 * time.Millisecond)
 }
+}
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	msgType, err := ReadUint16(conn)
 	if err != nil {
 		log.Printf("error decoding message type: %v", err)
+		return
 	}
 	switch msgType {
 	case MsgRegister:
