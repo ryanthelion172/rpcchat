@@ -42,7 +42,23 @@ func server(listenAddress string) {
 	}
 	defer listener.Close()
 
+	go handleListen(listener)
 	// accept incoming connections and handle RPC requestsfor {
+	//for {
+	//	conn, err := listener.Accept()
+	//	if err != nil {
+	//		log.Println("Failed to accept connection: ", err)
+	//		continue
+	//	}
+	//	go handleConnection(conn)
+	//}
+
+	// wait for a shutdown request
+	<-shutdown
+	time.Sleep(100 * time.Millisecond)
+}
+
+func handleListen(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -51,10 +67,6 @@ func server(listenAddress string) {
 		}
 		go handleConnection(conn)
 	}
-
-	// wait for a shutdown request
-	<-shutdown
-	time.Sleep(100 * time.Millisecond)
 }
 
 func handleConnection(conn net.Conn) {
@@ -69,16 +81,13 @@ func handleConnection(conn net.Conn) {
 		myErr := ""
 		if err != nil {
 			log.Printf("error decoding Register message: %v", err)
-			myErr = "Uh oh"
 			return
 		}
 		if err := Register(user); err != nil {
 			log.Printf("error handling Register message: %v", err)
+			myErr = "Register error"
 		}
 		WriteString(conn, myErr)
-		if msgType == 1 {
-			fmt.Print("weird")
-		}
 	case MsgList:
 		users := List()
 		err = WriteStringSlice(conn, users)
@@ -222,7 +231,7 @@ func Say(user, message string) {
 }
 
 func Help() {
-	log.Print("tell <user> <message>: messages user directly\n" +
+	log.Print("\ntell <user> <message>: messages user directly\n" +
 		"say <message>: says message to all users\n" +
 		"list: Shows list of users\n" +
 		"quit: Quits proram\n" +
@@ -405,6 +414,7 @@ func client(serverAddress, user string) {
 	go waitAndCheck(serverAddress, user, &stop)
 	// read inputs
 	for stop.Quit == false {
+		fmt.Print("> ")
 		scanner := bufio.NewScanner(os.Stdin)
 		scanner.Scan()
 		err := scanner.Err()
@@ -452,17 +462,17 @@ func client(serverAddress, user string) {
 				log.Fatal("Command could not be sent, Quitting program.")
 			}
 		case "quit":
-			stop.Quit = true
 			err := QuitRPC(serverAddress, user)
 			if err != nil {
 				log.Fatal("Command could not be sent, Quitting program.")
 			}
-		case "shutdown":
 			stop.Quit = true
+		case "shutdown":
 			err := ShutdownRPC(serverAddress)
 			if err != nil {
 				log.Fatal("Command could not be sent, Quitting program.")
 			}
+			stop.Quit = true
 		case "help":
 			Help()
 		case "":
