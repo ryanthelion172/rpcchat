@@ -63,11 +63,12 @@ func handleListen(listener net.Listener) {
 	for {
 
 		conn, err := listener.Accept()
-		if err != nil {
-			log.Println("Failed to accept connection: ", err)
-			continue
+		if err == nil {
+			go handleConnection(conn)
+			//log.Println("Failed to accept connection: ", err)
+
 		}
-		go handleConnection(conn)
+		//go handleConnection(conn)
 	}
 }
 
@@ -157,14 +158,11 @@ func handleConnection(conn net.Conn) {
 		Quit(user)
 		WriteString(conn, "")
 	case MsgShutdown:
-		Shutdown()
 		WriteString(conn, "")
+		Shutdown()
 	default:
 		log.Printf("unknown message type: %d", msgType)
 	}
-
-	<-shutdown
-	time.Sleep(100 * time.Millisecond)
 }
 
 func Register(user string) error {
@@ -262,11 +260,6 @@ func Shutdown() {
 }
 
 func waitAndCheck(server, user string, stop *programQuit) {
-	conn, err := net.Dial("tcp", server)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
 	for stop.Quit == false {
 		messages, err := CheckMessagesRPC(server, user)
 		if err != nil {
