@@ -43,41 +43,53 @@ func server(listenAddress string) {
 	defer listener.Close()
 
 	// accept incoming connections and handle RPC requests
-	for {
+	go handleListen(listener)
 
+	// wait for a shutdown request
+	<-shutdown
+	time.Sleep(100 * time.Millisecond)
+}
+
+func handleListen(listener net.Listener) {
+	for {
 		conn, err := listener.Accept()
+		defer conn.Close()
 		if err != nil {
 			log.Println("Failed to accept connection: ", err)
 			continue
 		}
-		go handleConnection(conn)
-
+		msgType, err := ReadUint16(conn)
+		if err != nil {
+			log.Printf("error decoding message type: %v", err)
+		} else {
+			go handleConnection(conn, msgType)
+		}
+		if msgType == MsgShutdown {
+			break
+		}
 	}
-	// set up network listen and accept loop here
-	// to receive and dispatch RPC requests
-	// ...
-
-	// wait for a shutdown request
 }
 
-func handleConnection(conn net.Conn) {
+func handleConnection(conn net.Conn, msgType uint16) {
 	defer conn.Close()
-	msgType, err := ReadUint16(conn)
-	if err != nil {
-		log.Printf("error decoding message type: %v", err)
-		return
-	}
-
+	//msgType, err := ReadUint16(conn)
+	//if err != nil {
+	//	log.Printf("error decoding message type: %v", err)
+	//}
+	err := error(nil)
 	switch msgType {
 	case MsgRegister:
 		user, err := ReadString(conn)
+		myErr := ""
 		if err != nil {
 			log.Printf("error decoding Register message: %v", err)
+			myErr = "Uh oh"
 			return
 		}
 		if err := Register(user); err != nil {
 			log.Printf("error handling Register message: %v", err)
 		}
+		WriteString(conn, myErr)
 		if msgType == 1 {
 			fmt.Print("weird")
 		}
@@ -87,10 +99,7 @@ func handleConnection(conn net.Conn) {
 		if err != nil {
 			log.Printf("error encoding List response: %v", err)
 		}
-		// err = WriteString(conn, "")
-		// if err != nil {
-		// 	log.Printf("error encoding List response: %v", err)
-		// }
+		WriteString(conn, "")
 	case MsgCheckMessages:
 		user, err := ReadString(conn)
 		if err != nil {
@@ -102,6 +111,7 @@ func handleConnection(conn net.Conn) {
 		if err != nil {
 			log.Printf("error encoding CheckMessages response: %v", err)
 		}
+		WriteString(conn, "")
 	case MsgTell:
 		user, err := ReadString(conn)
 		if err != nil {
@@ -123,6 +133,7 @@ func handleConnection(conn net.Conn) {
 			log.Printf("error encoding List response: %v", err)
 		}
 		Tell(user, target, message)
+		WriteString(conn, "")
 	case MsgSay:
 
 		user, err := ReadString(conn)
@@ -136,6 +147,7 @@ func handleConnection(conn net.Conn) {
 			return
 		}
 		Say(user, message)
+		WriteString(conn, "")
 	case MsgQuit:
 		user, err := ReadString(conn)
 		if err != nil {
@@ -143,8 +155,10 @@ func handleConnection(conn net.Conn) {
 			return
 		}
 		Quit(user)
+		WriteString(conn, "")
 	case MsgShutdown:
 		Shutdown()
+		WriteString(conn, "")
 	default:
 		log.Printf("unknown message type: %d", msgType)
 	}
