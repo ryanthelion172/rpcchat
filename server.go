@@ -24,10 +24,6 @@ const (
 	MsgShutdown
 )
 
-type programQuit struct {
-	Quit bool
-}
-
 var mutex sync.Mutex
 var messages map[string][]string
 var shutdown chan struct{}
@@ -54,11 +50,12 @@ func handleListen(listener net.Listener) {
 	for {
 
 		conn, err := listener.Accept()
-		if err != nil {
-			log.Println("Failed to accept connection: ", err)
-			continue
+		if err == nil {
+			go handleConnection(conn)
+			//log.Println("Failed to accept connection: ", err)
+
 		}
-		go handleConnection(conn)
+		//go handleConnection(conn)
 	}
 }
 
@@ -148,8 +145,8 @@ func handleConnection(conn net.Conn) {
 		Quit(user)
 		WriteString(conn, "")
 	case MsgShutdown:
-		Shutdown()
 		WriteString(conn, "")
+		Shutdown()
 	default:
 		log.Printf("unknown message type: %d", msgType)
 	}
@@ -250,11 +247,6 @@ func Shutdown() {
 }
 
 func waitAndCheck(server, user string) {
-	conn, err := net.Dial("tcp", server)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
 	for {
 		messages, err := CheckMessagesRPC(server, user)
 		if err != nil {
