@@ -67,6 +67,7 @@ func handleConnection(conn net.Conn) {
 		log.Printf("error decoding message type: %v", err)
 		return
 	}
+
 	switch msgType {
 	case MsgRegister:
 		user, err := ReadString(conn)
@@ -77,16 +78,19 @@ func handleConnection(conn net.Conn) {
 		if err := Register(user); err != nil {
 			log.Printf("error handling Register message: %v", err)
 		}
+		if msgType == 1 {
+			fmt.Print("weird")
+		}
 	case MsgList:
 		users := List()
 		err = WriteStringSlice(conn, users)
 		if err != nil {
 			log.Printf("error encoding List response: %v", err)
 		}
-		err = WriteString(conn, "")
-		if err != nil {
-			log.Printf("error encoding List response: %v", err)
-		}
+		// err = WriteString(conn, "")
+		// if err != nil {
+		// 	log.Printf("error encoding List response: %v", err)
+		// }
 	case MsgCheckMessages:
 		user, err := ReadString(conn)
 		if err != nil {
@@ -282,7 +286,7 @@ func ListRPC(server string) ([]string, error) {
 	WriteUint16(conn, MsgList)
 	// receive returned list using ReadStringSlice.
 	// receive error using ReadString.
-	return make([]string), nil
+	return make([]string, 0), nil
 }
 
 func CheckMessagesRPC(server, user string) ([]string, error) {
@@ -296,7 +300,7 @@ func CheckMessagesRPC(server, user string) ([]string, error) {
 	// Give server parameter of user using WriteString.
 	// receive returned list using ReadStringSlice.
 	// receive error using ReadString.
-	return make([]string 0), nil
+	return make([]string, 0), nil
 }
 
 func TellRPC(server, user, target, message string) error {
@@ -468,7 +472,7 @@ func ReadUint16(r io.Reader) (uint16, error) {
 	return value, nil
 }
 func WriteUint16(conn io.Writer, value uint16) error {
-	raw := []byte {
+	raw := []byte{
 		byte((value >> 8) & 0xff),
 		byte((value >> 0) & 0xff),
 	}
@@ -480,7 +484,7 @@ func WriteString(conn io.Writer, value string) error {
 	_, err := io.WriteString(conn, value)
 	return err
 }
-func WriteStringSlice(conn io.Writer, value []string) error{
+func WriteStringSlice(conn io.Writer, value []string) error {
 	WriteUint16(conn, uint16(len(value)))
 	for _, x := range value {
 		WriteString(conn, x)
