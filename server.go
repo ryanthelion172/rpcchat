@@ -42,41 +42,27 @@ func server(listenAddress string) {
 	}
 	defer listener.Close()
 
-	// accept incoming connections and handle RPC requests
-	go handleListen(listener)
+	// accept incoming connections and handle RPC requestsfor {
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Println("Failed to accept connection: ", err)
+			continue
+		}
+		go handleConnection(conn)
+	}
 
 	// wait for a shutdown request
 	<-shutdown
 	time.Sleep(100 * time.Millisecond)
 }
 
-func handleListen(listener net.Listener) {
-	for {
-		conn, err := listener.Accept()
-		defer conn.Close()
-		if err != nil {
-			log.Println("Failed to accept connection: ", err)
-			continue
-		}
-		msgType, err := ReadUint16(conn)
-		if err != nil {
-			log.Printf("error decoding message type: %v", err)
-		} else {
-			go handleConnection(conn, msgType)
-		}
-		if msgType == MsgShutdown {
-			break
-		}
-	}
-}
-
-func handleConnection(conn net.Conn, msgType uint16) {
+func handleConnection(conn net.Conn) {
 	defer conn.Close()
-	//msgType, err := ReadUint16(conn)
-	//if err != nil {
-	//	log.Printf("error decoding message type: %v", err)
-	//}
-	err := error(nil)
+	msgType, err := ReadUint16(conn)
+	if err != nil {
+		log.Printf("error decoding message type: %v", err)
+	}
 	switch msgType {
 	case MsgRegister:
 		user, err := ReadString(conn)
